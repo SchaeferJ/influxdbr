@@ -7,27 +7,25 @@
 #' @rdname diagnostics
 #' @export
 show_stats <- function(con) {
-
-  influx_query(con = con, query = "SHOW STATS",
-               handler = identity)[[1]][[1]]$series %>%
+  influx_query(con = con, query = "SHOW STATS") %>%
     flatten_series("STAT")
 }
 
 #' @rdname diagnostics
 #' @export
 show_diagnostics <- function(con) {
-  influx_query(con = con,
-               query = "SHOW DIAGNOSTICS",
-               handler = identity)[[1]][[1]]$series %>%
+  influx_query(con = con, query = "SHOW DIAGNOSTICS") %>%
     flatten_series("DIAGNOSTIC")
 }
 
 flatten_series <- function(series, name) {
-  do.call(rbind, 
-          lapply(series, function(s) {
-            data.frame(category = s$name,
-                       measure = unlist(s$columns),
-                       value = unlist(s$values))
-          })) %>%
-    stats::setNames(c("CATEGORY", name, "VALUE"))
+  lapply(series,
+         function(s) {
+           data.frame(category = s[["name"]],
+                      measure = names(s)[-1],
+                      value = unlist(s[-1], use.names = F))
+         }) %>% 
+    data.table::rbindlist() %>%
+    data.table::setnames(c("CATEGORY", name, "VALUE")) %>%
+    as.data.frame()
 }

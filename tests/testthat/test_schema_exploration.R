@@ -12,6 +12,7 @@ test_that("show commands", {
   
   ## show_users(CON)
   ## show_grants(CON, "nonuser")
+  ## show_grants(CON, "tmp")
   ## show_databases(CON)
   ## show_measurements(CON, db = DB)
   ## show_series(CON, DB)
@@ -20,9 +21,7 @@ test_that("show commands", {
   ## show_field_keys(CON, DB)
   ## show_retention_policies(CON, DB)
   ## show_diagnostics(CON)
-  ## influx_query(CON,
-  ##              query = "SHOW DIAGNOSTICS",
-  ##              handler = identity, csv = T)
+  ## influx_query(CON, query = "SHOW DIAGNOSTICS")
   ## show_stats(CON)
   
   expect_silent(show_diagnostics(CON))

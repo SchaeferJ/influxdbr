@@ -35,8 +35,7 @@ create_database <- function(con, db) {
 #' @export
 #' @rdname database_management
 drop_database <- function(con, db) {
-  invisible(influx_post(con = con,
-                        query = paste("DROP DATABASE", db)))
+  invisible(influx_post(con = con, query = paste("DROP DATABASE", db)))
 }
 
 #' @export

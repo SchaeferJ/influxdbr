@@ -4,7 +4,6 @@ test_that("setup", {
   skip_on_cran()
   skip_on_travis()
   expect_silent(setup_database())
-  
 })
 
 DF <- as.data.frame
@@ -31,11 +30,8 @@ df[1:4, "field_chr"] <- c(" B,C", " B C", " B=C", " \"D\" ")
 # df[c(2), c(7)] <- NA
 # df[c(4,6), c(7)] <- NA
 
-
-test_that("write data.frame with single measurement", {
-  skip_on_cran()
-  skip_on_travis()
-
+test_that("line protocol encoding works", {
+  
   dfline <-
     influxdbr:::convert_to_line_protocol.data.frame(
       x = df %>% dplyr::mutate(tag_two = as.factor(tag_two)),
@@ -57,6 +53,38 @@ test_that("write data.frame with single measurement", {
       "test,tag_one\\,=C,tag_two=B,tag\\ three=C\\ tag field_chr=\"  B field\",field_float=0.777584439376369,field_int=23569431,field_bool=TRUE -600", 
       "test,tag_one\\,=B,tag_two=E,tag\\ three=D\\ tag field_chr=\"  E field\",field_float=0.865120546659455,field_int=19867908,field_bool=TRUE -300", 
       "test,tag_one\\,=B,tag_two=D,tag\\ three=C\\ tag field_chr=\"  C field\",field_float=0.330660525709391,field_int=33052985,field_bool=FALSE 0"))
+
+  df1 <- dplyr::bind_cols(df, measurement = rep(c("one", "two", "three", "four", "five"), 2))
+
+  dfline <- influxdbr:::convert_to_line_protocol.data.frame(
+    x = df1 %>% dplyr::mutate(tag_two = as.factor(tag_two)),
+    tag_cols = c("tag_one,", "tag_two", "tag three"),
+    time_col = "time",
+    measurement_col = "measurement",
+    precision = "s",
+    use_integers = FALSE)
+
+  expect_equal(dfline,
+               c("one,tag_one\\,=A,tag_two=B\\,C,tag\\ three=B\\ tag field_chr=\" B,C\",field_float=0.307085896842182,field_int=21140856,field_bool=TRUE,measurement=\"one\" -2700", 
+                 "two,tag_one\\,=C,tag_two=B\\ C,tag\\ three=C\\ tag field_chr=\" B C\",field_float=0.207713897805661,field_int=59757530,field_bool=FALSE,measurement=\"two\" -2400", 
+                 "three,tag_one\\,=B,tag_two=B\\=C,tag\\ three=E\\ tag field_chr=\" B=C\",field_float=0.884227027418092,field_int=22990589,field_bool=FALSE,measurement=\"three\" -2100", 
+                 "four,tag_one\\,=E,tag_two=B,tag\\ three=D\\ tag field_chr=\" \"D\" \",field_float=0.780358511023223,field_int=12348724,field_bool=FALSE,measurement=\"four\" -1800", 
+                 "five,tag_one\\,=C,tag_two=D,tag\\ three=A\\ tag field_chr=\"  E field\",field_float=0.491231821943074,field_int=25339066,field_bool=FALSE,measurement=\"five\" -1500", 
+                 "one,tag_one\\,=C,tag_two=D,tag\\ three=C\\ tag field_chr=\"  D field\",field_float=0.603324356488883,field_int=59132106,field_bool=FALSE,measurement=\"one\" -1200", 
+                 "two,tag_one\\,=A,tag_two=B,tag\\ three=D\\ tag field_chr=\"  E field\",field_float=0.827303449623287,field_int=27488667,field_bool=TRUE,measurement=\"two\" -900", 
+                 "three,tag_one\\,=C,tag_two=B,tag\\ three=C\\ tag field_chr=\"  B field\",field_float=0.777584439376369,field_int=23569431,field_bool=TRUE,measurement=\"three\" -600", 
+                 "four,tag_one\\,=B,tag_two=E,tag\\ three=D\\ tag field_chr=\"  E field\",field_float=0.865120546659455,field_int=19867908,field_bool=TRUE,measurement=\"four\" -300", 
+                 "five,tag_one\\,=B,tag_two=D,tag\\ three=C\\ tag field_chr=\"  C field\",field_float=0.330660525709391,field_int=33052985,field_bool=FALSE,measurement=\"five\" 0"))
+
+})
+
+## !!! fixme: INFLUX BUG: https://github.com/influxdata/influxdb/issues/14275
+## Quotes within strings are duplicated:
+df[4, "field_chr"] <- " 'D' "
+
+test_that("write data.frame with single measurement", {
+  skip_on_cran()
+  skip_on_travis()
 
   drop_measurement(CON, DB, "df2")
 
@@ -84,8 +112,7 @@ test_that("write data.frame with single measurement", {
                use_integers = TRUE)
 
   df3 <-
-    influx_query(CON, DB,
-      query = "select * from df3")[, names(df)]
+    influx_query(CON, DB, query = "select * from df3")[, names(df)]
 
   expect_equal(DF(df), DF(df3))
 
@@ -135,62 +162,6 @@ test_that("write data.frame with single measurement", {
   
 })
 
-test_that("write data.frame with multiple measurements", {
-  skip_on_cran()
-  skip_on_travis()
-
-  df1 <- dplyr::bind_cols(df, measurement = rep(c("one", "two", "three", "four", "five"), 2))
-
-  # NAs not supported!
-  # df[c(3, 8), c(5)] <- NA
-  # df[c(4), c(6)] <- NA
-  # df[c(2), c(7)] <- NA
-  # df[c(4,6), c(7)] <- NA
-
-  dfline <- influxdbr:::convert_to_line_protocol.data.frame(x = df1 %>% dplyr::mutate(tag_two = as.factor(tag_two)),
-                                                 tag_cols = c("tag_one,", "tag_two", "tag three"),
-                                                 time_col = "time",
-                                                 measurement_col = "measurement",
-                                                 precision = "s",
-                                                 use_integers = FALSE)
-
-  expect_equal(dfline,
-               c("one,tag_one\\,=A,tag_two=B\\,C,tag\\ three=B\\ tag field_chr=\" B,C\",field_float=0.307085896842182,field_int=21140856,field_bool=TRUE,measurement=\"one\" -2700", 
-                 "two,tag_one\\,=C,tag_two=B\\ C,tag\\ three=C\\ tag field_chr=\" B C\",field_float=0.207713897805661,field_int=59757530,field_bool=FALSE,measurement=\"two\" -2400", 
-                 "three,tag_one\\,=B,tag_two=B\\=C,tag\\ three=E\\ tag field_chr=\" B=C\",field_float=0.884227027418092,field_int=22990589,field_bool=FALSE,measurement=\"three\" -2100", 
-                 "four,tag_one\\,=E,tag_two=B,tag\\ three=D\\ tag field_chr=\" \"D\" \",field_float=0.780358511023223,field_int=12348724,field_bool=FALSE,measurement=\"four\" -1800", 
-                 "five,tag_one\\,=C,tag_two=D,tag\\ three=A\\ tag field_chr=\"  E field\",field_float=0.491231821943074,field_int=25339066,field_bool=FALSE,measurement=\"five\" -1500", 
-                 "one,tag_one\\,=C,tag_two=D,tag\\ three=C\\ tag field_chr=\"  D field\",field_float=0.603324356488883,field_int=59132106,field_bool=FALSE,measurement=\"one\" -1200", 
-                 "two,tag_one\\,=A,tag_two=B,tag\\ three=D\\ tag field_chr=\"  E field\",field_float=0.827303449623287,field_int=27488667,field_bool=TRUE,measurement=\"two\" -900", 
-                 "three,tag_one\\,=C,tag_two=B,tag\\ three=C\\ tag field_chr=\"  B field\",field_float=0.777584439376369,field_int=23569431,field_bool=TRUE,measurement=\"three\" -600", 
-                 "four,tag_one\\,=B,tag_two=E,tag\\ three=D\\ tag field_chr=\"  E field\",field_float=0.865120546659455,field_int=19867908,field_bool=TRUE,measurement=\"four\" -300", 
-                 "five,tag_one\\,=B,tag_two=D,tag\\ three=C\\ tag field_chr=\"  C field\",field_float=0.330660525709391,field_int=33052985,field_bool=FALSE,measurement=\"five\" 0"))
-
-  # write full df
-  df1a <- df1 %>% dplyr::mutate(field_int = as.integer(field_int))
-
-  influx_write(x = df1a, CON, DB,
-               measurement_col = "measurement",
-               time_col = "time",
-               tag_cols = c("tag_one,", "tag_two", "tag three"),
-               use_integers = TRUE)
-
-  df2 <-
-    influx_query(CON, DB,
-                 query = paste("select * from",
-                               c("one", "two", "three", "four", "five"),
-                               "group by *", collapse = ";"),
-                 tags_as_factors = FALSE) %>%
-    dplyr::bind_rows() %>% .[, names(df1a)] %>% dplyr::arrange(time)
-
-  expect_equal(DF(dplyr::arrange(df1a, time)), DF(df2))
-
-  # delete measurements
-  for (nm in c("one", "two", "three", "four", "five"))
-      drop_measurement(CON, DB, nm)
-
-})
-
 test_that("UTF-8 encodings", {
   skip_on_cran()
   skip_on_travis()
@@ -220,10 +191,43 @@ test_that("UTF-8 encodings", {
 
 })
 
-test_that("write data.table with multiple measurements", {
+test_that("write data.frame with multiple measurements", {
   skip_on_cran()
   skip_on_travis()
+
+  df1 <- dplyr::bind_cols(df, measurement = rep(c("one", "two", "three", "four", "five"), 2))
+
+  # write full df
+  df1a <- df1 %>% dplyr::mutate(field_int = as.integer(field_int))
+
+  influx_write(x = df1a, CON, DB,
+               measurement_col = "measurement",
+               time_col = "time",
+               tag_cols = c("tag_one,", "tag_two", "tag three"),
+               use_integers = TRUE)
+
+  influx_query(CON, DB, "select * from one group by *", split_tags = T)
   
+  df2 <-
+    influx_query(CON, DB,
+                 query = paste("select * from",
+                               c("one", "two", "three", "four", "five"),
+                               "group by *", collapse = ";"),
+                 tags_as_factors = FALSE) %>%
+    dplyr::bind_rows() %>% .[, names(df1a)] %>% dplyr::arrange(time)
+
+  expect_equal(DF(dplyr::arrange(df1a, time)), DF(df2))
+
+  # delete measurements
+  for (nm in c("one", "two", "three", "four", "five"))
+      drop_measurement(CON, DB, nm)
+
+})
+
+test_that("write data.table with multiple measurements 2", {
+  skip_on_cran()
+  skip_on_travis()
+
   dt <- data.table::data.table(time = seq(from = Sys.time(), by = "-5 min", length.out = 10),
                                `tag_one,` = sample(LETTERS[1:5], 10, replace = T),
                                tag_two = sample(LETTERS[1:5], 10, replace = T),

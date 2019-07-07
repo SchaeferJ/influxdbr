@@ -59,11 +59,14 @@ revoke_privileges <- function(con, db, username,
 #' @export
 #' @rdname user_management
 show_users <- function(con) {
-  influx_query(con = con, query = "SHOW USERS")
+  out <- influx_query(con = con, query = "SHOW USERS")
+  out[["name"]] <- NULL
+  out
 }
 
 #' @export
 #' @rdname user_management
 show_grants <- function(con, username) {
-  influx_query(con = con, query = paste("SHOW GRANTS FOR", username))
+  .influx_query(con = con, query = paste("SHOW GRANTS FOR", username),
+                throw_on_empty = TRUE)
 }

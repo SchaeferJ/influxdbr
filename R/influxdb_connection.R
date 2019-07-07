@@ -110,7 +110,7 @@ influx_connection <-  function(scheme = c("http", "https"),
   
   # print url
   if (verbose) print(response$url)
-  check_response_errors(response)
+  check_response_errors(response, FALSE)
 
   con[["url"]] <- response$url
   con[["status"]] <- httr::http_status(response)

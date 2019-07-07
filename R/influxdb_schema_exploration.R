@@ -22,7 +22,9 @@ NULL
 #' @export
 #' @rdname show_databases
 show_databases <- function(con) {
-  influx_query(con = con, query = "SHOW DATABASES")
+  out <- influx_query(con = con, query = "SHOW DATABASES")
+  out[["name"]] <- NULL
+  out
 }
 
 #' @export
@@ -30,7 +32,9 @@ show_databases <- function(con) {
 show_measurements <- function(con, db, where = NULL) {
   query <- qpaste("SHOW MEASUREMENTS",
                   "WHERE" = where)
-  influx_query(con = con, db = db, query = query)
+  out <- influx_query(con = con, db = db, query = query)
+  out[["name"]] <- NULL
+  out
 }
 
 #' @export
@@ -39,7 +43,7 @@ show_series <- function(con, db, measurement = NULL, where = NULL) {
   query <- qpaste("SHOW SERIES",
                   "FROM" = measurement,
                   "WHERE" = where)
-  influx_query(con = con, db = db, query = query)
+  influx_query(con = con, db = db, query = query)[-1]
 }
 
 #' @export
@@ -73,5 +77,7 @@ show_field_keys <- function(con, db, measurement = NULL) {
 #' @rdname show_databases
 show_retention_policies <- function(con, db) {
   query <- paste("SHOW RETENTION POLICIES ON", db)
-  influx_query(con = con, query = query)
+  out <- influx_query(con = con, query = query)
+  out[["name"]] <- NULL
+  out
 }

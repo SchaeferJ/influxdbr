@@ -9,33 +9,18 @@ influx_post <- function(con,
                         db = NULL,
                         query = "") {
   
-  # create query based on function parameters
   q <- list(db = db,
             u = con$user,
             p = con$pass,
             q = query)
     
-  # submit POST
-  response <- httr_POST(con = con, query = q, endpoint = "query")
-  
-  # if curl fails return NULL
-  if (is.null(response)) {
-    return(NULL)
-  }
-  
-  check_response_errors(response)
-  
-  out <- parse_response(response$content, FALSE)
+  response <- httr_POST(con = con, query = q, endpoint = "query", csv = T)
 
-  # flatten list to get direct access to list of results
-  while (!("results" %in% names(out))) {
-    out <- unlist(out, FALSE, FALSE)
-  }
-  out <- unlist(out, FALSE)
-
-  out[["query"]] <- query
-  out[["status"]] <- httr::http_status(response)
+  check_response_errors(response, FALSE)
+  
+  out <- list(content = httr::content(response, "text", encoding = "UTF-8"),
+              query = query,
+              status = httr::http_status(response))
   class(out) <- "invluxdbr.post.response"
-  ## str(out)
   out
 }
