@@ -196,7 +196,9 @@ convert_to_line_protocol.data.frame <- function(x,
     the_time <- list(" ", format_time(x[[time_col]], precision))
   }
 
-  invisible(do.call(paste0, c(the_measurement, the_tags, the_vals, the_time)))
+  out <- do.call(paste0, c(the_measurement, the_tags, the_vals, the_time))
+  ## print(out)
+  invisible(out)
 
 }
 
@@ -213,9 +215,9 @@ replace_spec_char <- function(x, do_equal = TRUE) {
 
 double_quote <- function(x) {
   if (is.factor(x)) {
-    levels(x) <- paste0("\"", levels(x), "\"")
+    levels(x) <- paste0("\"", gsub("\"", "\\\"", levels(x), fixed = TRUE), "\"")
   } else if (is.character(x)) {
-    x <- paste0("\"", x, "\"")
+    x <- paste0("\"", gsub("\"", "\\\"", x, fixed = TRUE), "\"")
   }
   x
 }

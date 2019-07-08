@@ -88,7 +88,16 @@ influx_query <- function(con,
   }
 }
 
-.split_to_named <- function(x) {
+# INFLUX BUG: https://github.com/influxdata/influxdb/issues/14275
+# Quotes within strings are duplicated:
+replace_double_quote <- function(x) {
+  gsub("\"\"", "\"", x, fixed = TRUE)
+}
+
+split_to_named <- function(x) {
+  # get rid of \\ preceding , =
+  x <- gsub("\\\\([, =])", "\\1", x)
+  x <- replace_double_quote(x)
   seq <- seq.int(1, length(x), by = 2)
   structure(as.list(x[seq + 1]), names = x[seq])
 }
@@ -97,15 +106,15 @@ parse_csv <- function(x, split_tags = TRUE, tags_as_factors = TRUE,
                       epoch = "n", as_POSIXct = TRUE) {
   ## cat(x)
   out <- data.table::fread(text = x)
-  if (split_tags) {
-    tags <- as.factor(out$tags)
+  if (split_tags & !is.null(out[["tags"]])) {
+    tags <- as.factor(out[["tags"]])
     ix <- as.integer(tags)
     out[["tags"]] <- NULL
     kvs <-
+      # split by ,= which are not preceded by \\
       strsplit(levels(tags), "(?<!\\\\)[,=]", perl = TRUE) %>%
-      lapply(.split_to_named) %>%
+      lapply(split_to_named) %>%
       data.table::rbindlist(fill = TRUE, use.names = TRUE)
-    str(kvs)
     tag_factors <- lapply(kvs, function(levels) levels[ix])
     processor <- if (tags_as_factors) as.factor else identity
     for (nm in names(kvs)) {
@@ -115,6 +124,11 @@ parse_csv <- function(x, split_tags = TRUE, tags_as_factors = TRUE,
   if (as_POSIXct && !is.null(out[["time"]])) {
     out[["time"]] <- .POSIXct(out[["time"]]/precision_divisor(epoch), tz = "UTC")
   }
+  for (nm in names(out)) {
+    if (is.character(out[[nm]]))
+      out[[nm]] <- replace_double_quote(out[[nm]])
+  }
+  names(out) <- replace_double_quote(names(out))
   class(out) <- c("influxdbr.response", "data.frame")
   out
 }
