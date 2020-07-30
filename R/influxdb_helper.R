@@ -7,8 +7,15 @@
 httr_GET <- function(con, query = NULL, endpoint, csv = TRUE) {
   config <- con$config
   if (csv) {
-    config$headers[["Accept"]] <- "application/csv"
-  }
+    httr::GET(url = "",
+              scheme = con$scheme,
+              hostname = con$host,
+              port = con$port,
+              path = paste0(con$path, endpoint),
+              query = query,
+              config = config,
+              httr::add_headers(Accept="application/csv"))
+  }else{
   httr::GET(url = "",
             scheme = con$scheme,
             hostname = con$host,
@@ -16,6 +23,7 @@ httr_GET <- function(con, query = NULL, endpoint, csv = TRUE) {
             path = paste0(con$path, endpoint),
             query = query,
             config = config)
+  }
 }
 
 
@@ -28,7 +36,15 @@ httr_GET <- function(con, query = NULL, endpoint, csv = TRUE) {
 httr_POST <- function(con, query = NULL, body = NULL, endpoint, csv = TRUE) {
   config <- con$config
   if (csv) {
-    config$headers[["Accept"]] <- "application/csv"
+    httr::POST(url = "",
+               body = body,
+               scheme = con$scheme,
+               hostname = con$host,
+               port = con$port,
+               path = paste0(con$path, endpoint),
+               query = query,
+               config = config,
+               httr::add_headers(Accept="application/csv"))
   }
   httr::POST(url = "",
              body = body,
